@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Generador de patrones de cubos</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#eef2f7;--card:#fff;--ink:#1c2733;--mute:#5d6b7a;--line:#d3dbe5;--accent:#1d6fd8;--empty:#f3f5f8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141b23;--card:#1e2833;--ink:#eaf0f6;--mute:#9fb0c1;--line:#33414f;--accent:#5ea2ff;--empty:#2a3643}}
+:root[data-theme="dark"]{--bg:#141b23;--card:#1e2833;--ink:#eaf0f6;--mute:#9fb0c1;--line:#33414f;--accent:#5ea2ff;--empty:#2a3643}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Fredoka",system-ui,sans-serif;line-height:1.45}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.7rem;margin:0 0 4px;font-weight:600}
+.sub{color:var(--mute);margin:0 0 18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.panel h2{font-size:1rem;margin:0 0 10px;font-weight:600}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button,.btn{font:inherit;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 16px;cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:#fff}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.color{position:relative}
+.color .rm{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:8px;border:0;background:var(--empty);color:var(--mute);cursor:pointer;font:inherit;line-height:1}
+.color.add{border-style:dashed;align-items:center;justify-content:center;text-align:center;color:var(--ink);cursor:pointer;min-height:92px;gap:4px}
+.color.add input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.color.add small{color:var(--mute)}
+.color.add:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.color{border:2px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.color.on{border-color:var(--ink)}
+.color .pick{display:flex;align-items:center;gap:8px;background:none;border:0;font:inherit;color:var(--ink);cursor:pointer;padding:0;text-align:left}
+.sw{width:28px;height:28px;border-radius:8px;border:2px solid rgba(0,0,0,.2);flex:none}
+.step{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.step button{width:36px;height:36px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:1.1rem;cursor:pointer}
+.step span{min-width:1.5em;text-align:center;font-weight:600}
+.color:not(.on) .step{opacity:.35;pointer-events:none}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.row label{display:flex;align-items:center;gap:8px}
+input[type=number]{font:inherit;width:72px;padding:6px 8px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink)}
+.status{font-size:.95rem;color:var(--mute);margin:10px 0 0}
+.status.warn{color:#c2410c}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+#sheet{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+.pat{background:#fff;color:#111;border:1px solid var(--line);border-radius:14px;padding:12px;break-inside:avoid;page-break-inside:avoid}
+.pat h3{margin:0 0 8px;font-size:.9rem;font-weight:500;color:#444}
+.grid{display:grid;gap:calc(var(--cell)*.14);padding:calc(var(--cell)*.14);background:#fff;border:3px solid #222;border-radius:calc(var(--cell)*.3);width:max-content;max-width:100%}
+.cell{width:var(--cell);height:var(--cell);border:2px solid #222;border-radius:calc(var(--cell)*.26);background:#f3f3f3;overflow:hidden}
+.cell i{display:block;width:100%;height:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.empty-msg{color:var(--mute);text-align:center;padding:24px}
+@media (max-width:520px){.cell{width:min(var(--cell),calc((100vw - 130px)/var(--n)))!important;height:min(var(--cell),calc((100vw - 130px)/var(--n)))!important}}
+@media print{
+ @page{size:A4;margin:12mm}
+ body{background:#fff}
+ main{padding:0;max-width:none}
+ .noprint{display:none!important}
+ #sheet{gap:8mm;justify-content:flex-start}
+ .pat{border:0;padding:0}
+ .cell{width:var(--cell)!important;height:var(--cell)!important}
+}
+
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.top{flex-wrap:wrap}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none;margin-left:auto}
+.kofi{display:inline-block;background:#0f7db3;color:#fff;text-decoration:none;font-weight:500;border-radius:12px;padding:8px 16px;white-space:nowrap}
+.kofi:hover{background:#0b6a9a}
+.kofi:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.lang{flex:none}
+.lang button{padding:6px 12px;border-radius:10px}
+.msg{min-height:1.4em;margin:10px 0 0;color:var(--mute);font-size:.95rem}
+.msg.err{color:#c2410c}
+</style>
+</head>
+<body>
+<main>
+<div class="noprint">
+<div class="top">
+<div><h1 data-i18n="title"></h1><p class="sub" data-i18n="sub"></p></div>
+<div class="right"><a class="kofi" id="kofi" href="https://ko-fi.com/carnivalcamps" target="_blank" rel="noopener noreferrer" data-i18n="kofi"></a><div class="seg lang" id="lang" role="group" aria-label="Idioma / Language"></div></div>
+</div>
+
+<section class="panel"><h2 data-i18n="sizeT"></h2>
+<div class="seg" id="sizes"></div></section>
+
+<section class="panel"><h2 data-i18n="colorsT"></h2>
+<div class="colors" id="colors"></div>
+<p class="status" id="status"></p></section>
+
+<section class="panel"><h2 data-i18n="sheetT"></h2>
+<div class="row">
+<label><span data-i18n="patterns"></span> <input type="number" id="n" min="1" max="24" value="6"></label>
+<label><span data-i18n="cellmm"></span> <input type="number" id="mm" min="10" max="40" value="22"></label>
+</div>
+<div class="actions">
+<button class="btn primary" id="gen" data-i18n="gen"></button>
+<button class="btn" id="pdf" data-i18n="pdf"></button>
+<button class="btn" id="print" data-i18n="print"></button>
+</div>
+<p class="msg" id="msg" role="status" aria-live="polite"></p>
+<p class="status" data-i18n="hint"></p>
+</section>
+</div>
+<div id="sheet"></div>
+</main>
+<script>
+const T={
+es:{kofi:"☕ Apóyame en Ko-fi",title:"Patrones de cubos",sub:"Elige tamaño y colores, genera patrones al azar y descárgalos en PDF para que el niño los copie en el tablero.",
+sizeT:"Tamaño del tablero",colorsT:"Colores y cantidad de cubos de cada uno",sheetT:"Hoja",patterns:"Patrones",cellmm:"Casilla (mm)",
+gen:"Generar patrones",pdf:"Descargar PDF",print:"Imprimir",
+hint:"«Descargar PDF» crea el archivo directamente. Ajusta los mm de casilla al tamaño de tu tablero.",
+addT:"+ Color propio",addS:"Elígelo en la paleta de tu dispositivo",custom:"Propio",pattern:"Patrón",
+less:"Menos",more:"Más",remove:"Quitar",none:"Elige al menos un color y súmale cubos.",
+emptyMsg:"Elige al menos un color con cubos para generar patrones.",
+filled:(t,c)=>`${t} de ${c} casillas con cubo`,left:n=>` · ${n} quedarán vacías`,full:" · tablero lleno",
+making:"Creando PDF…",saved:"PDF listo.",declined:"Descarga cancelada.",fail:"No se pudo crear el PDF. Prueba con «Imprimir».",
+nodl:"La descarga directa no está disponible aquí; se abrió la impresión.",printTried:"Si no se abrió la impresión, usa «Descargar PDF»."},
+en:{kofi:"☕ Support me on Ko-fi",title:"Cube patterns",sub:"Pick a board size and colors, generate random patterns and download them as a PDF for kids to copy onto the board.",
+sizeT:"Board size",colorsT:"Colors and number of cubes of each",sheetT:"Sheet",patterns:"Patterns",cellmm:"Cell (mm)",
+gen:"Generate patterns",pdf:"Download PDF",print:"Print",
+hint:"“Download PDF” creates the file directly. Set the cell size in mm to match your board.",
+addT:"+ Custom color",addS:"Pick it from your device's color picker",custom:"Custom",pattern:"Pattern",
+less:"Fewer",more:"More",remove:"Remove",none:"Pick at least one color and add cubes to it.",
+emptyMsg:"Pick at least one color with cubes to generate patterns.",
+filled:(t,c)=>`${t} of ${c} cells with a cube`,left:n=>` · ${n} will be empty`,full:" · board is full",
+making:"Creating PDF…",saved:"PDF ready.",declined:"Download cancelled.",fail:"Couldn't create the PDF. Try “Print”.",
+nodl:"Direct download isn't available here; opened the print dialog.",printTried:"If the print dialog didn't open, use “Download PDF”."}
+};
+const LK="cubos:lang";
+let lang=(()=>{try{const v=localStorage.getItem(LK);if(v==="es"||v==="en")return v;}catch(e){}return (navigator.language||"es").toLowerCase().startsWith("es")?"es":"en";})();
+const t=k=>T[lang][k];
+
+const BASE=[["Rojo","Red","#e63946"],["Naranja","Orange","#f77f00"],["Amarillo","Yellow","#f4c20d"],["Lima","Lime","#9ccc2a"],["Verde","Green","#2faa4a"],["Turquesa","Turquoise","#1fb5a3"],["Celeste","Sky blue","#29b6d6"],["Azul","Blue","#1d6fd8"],["Azul marino","Navy","#1e3a8a"],["Morado","Purple","#8e44ad"],["Lila","Lilac","#b39ddb"],["Rosa","Pink","#ff6fa5"],["Fucsia","Magenta","#d81b8a"],["Café","Brown","#8b5a2b"],["Beige","Beige","#e8c9a0"],["Gris","Gray","#8a94a0"],["Negro","Black","#222222"],["Blanco","White","#ffffff"]];
+const KEY="cubos:custom";
+function loadCustom(){try{const a=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(a)?a.filter(h=>/^#[0-9a-f]{6}$/i.test(h)).map(h=>h.toLowerCase()):[];}catch(e){return [];}}
+function saveCustom(){try{localStorage.setItem(KEY,JSON.stringify(custom));}catch(e){}}
+let custom=loadCustom();
+let size=3;
+const counts={"#e63946":3,"#1d6fd8":3,"#2faa4a":3};
+let current=null;   // {pats,mm,size}
+
+const $=id=>document.getElementById(id);
+const total=()=>Object.values(counts).reduce((a,b)=>a+b,0);
+const allColors=()=>BASE.map(c=>[lang==="es"?c[0]:c[1],c[2]]).concat(custom.map((h,i)=>[t("custom")+" "+(i+1),h]));
+
+function distribute(){
+  const keys=Object.keys(counts);if(!keys.length)return;
+  const cells=size*size,base=Math.floor(cells/keys.length);let extra=cells-base*keys.length;
+  keys.forEach(k=>{counts[k]=base+(extra>0?1:0);extra--;});
+}
+
+function renderLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+  const box=$("lang");box.innerHTML="";
+  [["es","ES"],["en","EN"]].forEach(([k,l])=>{
+    const b=document.createElement("button");b.textContent=l;b.setAttribute("aria-pressed",k===lang);
+    b.onclick=()=>{lang=k;try{localStorage.setItem(LK,k);}catch(e){}renderLang();renderColors();if(current)generate(true);};
+    box.appendChild(b);
+  });
+}
+
+function renderSizes(){
+  $("sizes").innerHTML="";
+  [3,4,5].forEach(s=>{
+    const b=document.createElement("button");
+    b.textContent=s+" × "+s;b.setAttribute("aria-pressed",s===size);
+    b.onclick=()=>{size=s;distribute();renderSizes();renderColors();};
+    $("sizes").appendChild(b);
+  });
+}
+
+function addCustom(hex){
+  hex=hex.toLowerCase();
+  if(!BASE.some(c=>c[2]===hex)&&!custom.includes(hex)){custom.push(hex);saveCustom();}
+  if(!(hex in counts)){counts[hex]=1;if(total()>size*size)distribute();}
+  renderColors();
+}
+
+function renderColors(){
+  const box=$("colors");box.innerHTML="";
+  allColors().forEach(([name,hex],idx)=>{
+    const on=hex in counts,isCustom=idx>=BASE.length;
+    const d=document.createElement("div");d.className="color"+(on?" on":"");
+    d.innerHTML=`<button class="pick" aria-pressed="${on}"><span class="sw" style="background:${hex}"></span>${name}</button>
+    <div class="step"><button aria-label="${t("less")} ${name}">−</button><span>${on?counts[hex]:0}</span><button aria-label="${t("more")} ${name}">+</button></div>`;
+    d.querySelector(".pick").onclick=()=>{if(on)delete counts[hex];else counts[hex]=1;
+      if(on||total()>size*size)distribute();renderColors();};
+    const [minus,plus]=d.querySelectorAll(".step button");
+    minus.onclick=()=>{if(counts[hex]>0){counts[hex]--;renderColors();}};
+    plus.onclick=()=>{if(total()<size*size){counts[hex]++;renderColors();}};
+    if(isCustom){
+      const r=document.createElement("button");r.className="rm";r.textContent="×";r.setAttribute("aria-label",t("remove")+" "+name);
+      r.onclick=()=>{custom=custom.filter(h=>h!==hex);saveCustom();if(hex in counts){delete counts[hex];distribute();}renderColors();};
+      d.appendChild(r);
+    }
+    box.appendChild(d);
+  });
+  const add=document.createElement("label");add.className="color add";
+  add.innerHTML=`<strong>${t("addT")}</strong><small>${t("addS")}</small><input type="color" value="#ff8800" aria-label="${t("addT")}">`;
+  add.querySelector("input").onchange=e=>addCustom(e.target.value);
+  box.appendChild(add);
+  const tt=total(),c=size*size,s=$("status");
+  s.className="status"+(tt===0?" warn":"");
+  s.textContent=tt===0?t("none"):t("filled")(tt,c)+(tt<c?t("left")(c-tt):t("full"));
+}
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function makePattern(){
+  const cells=[];
+  Object.entries(counts).forEach(([k,n])=>{for(let i=0;i<n;i++)cells.push(k);});
+  while(cells.length<size*size)cells.push("");
+  return shuffle(cells);
+}
+
+function msg(text,err){const m=$("msg");m.textContent=text||"";m.className="msg"+(err?" err":"");}
+
+function drawSheet(){
+  const sheet=$("sheet");sheet.innerHTML="";
+  const {pats,mm,size:sz}=current;
+  pats.forEach((p,idx)=>{
+    const card=document.createElement("div");card.className="pat";
+    card.innerHTML=`<h3>${t("pattern")} ${idx+1}</h3>`;
+    const g=document.createElement("div");g.className="grid";
+    g.style.cssText=`grid-template-columns:repeat(${sz},auto);--n:${sz}`;
+    g.style.setProperty("--cell",mm+"mm");
+    p.forEach(c=>{
+      const cell=document.createElement("div");cell.className="cell";
+      cell.innerHTML=c?`<i style="background:${c}"></i>`:"";
+      g.appendChild(cell);
+    });
+    card.appendChild(g);sheet.appendChild(card);
+  });
+}
+
+function generate(redrawOnly){
+  if(redrawOnly===true&&current){drawSheet();return true;}
+  if(total()===0){current=null;$("sheet").innerHTML=`<p class="empty-msg">${t("emptyMsg")}</p>`;return false;}
+  const n=Math.max(1,Math.min(24,+$("n").value||6));
+  const mm=Math.max(10,Math.min(40,+$("mm").value||22));
+  const seen=new Set(),pats=[];
+  for(let tries=0;pats.length<n&&tries<n*40;tries++){
+    const p=makePattern(),key=p.join(",");
+    if(!seen.has(key)){seen.add(key);pats.push(p);}
+  }
+  current={pats,mm,size};
+  drawSheet();msg("");
+  $("sheet").scrollIntoView({behavior:"smooth",block:"start"});
+  return true;
+}
+
+function buildPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:"mm",format:"a4"});
+  const {pats,size:sz}=current;let cell=current.mm;
+  const M=12,PW=210,PH=297,G=8,f=.14,TH=7;
+  let w=sz*cell+(sz+1)*cell*f;
+  if(w>PW-2*M){cell*=(PW-2*M)/w;w=PW-2*M;}
+  const gp=cell*f,h=w;
+  const rgb=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16));
+  let x=M,y=M;
+  pats.forEach((p,idx)=>{
+    if(x+w>PW-M+.01){x=M;y+=h+TH+G;}
+    if(y+h+TH>PH-M){doc.addPage();x=M;y=M;}
+    doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(70);
+    doc.text(t("pattern")+" "+(idx+1),x,y+4);
+    const top=y+TH;
+    doc.setDrawColor(34);doc.setLineWidth(.7);doc.setFillColor(255,255,255);
+    doc.roundedRect(x,top,w,h,cell*.3,cell*.3,"FD");
+    doc.setLineWidth(.45);
+    p.forEach((c,i)=>{
+      const r=Math.floor(i/sz),k=i%sz;
+      if(c)doc.setFillColor(...rgb(c));else doc.setFillColor(243,243,243);
+      doc.roundedRect(x+gp+k*(cell+gp),top+gp+r*(cell+gp),cell,cell,cell*.26,cell*.26,"FD");
+    });
+    x+=w+G;
+  });
+  return doc.output("blob");
+}
+
+function doPrint(){try{window.print();}catch(e){}}
+
+async function downloadPDF(){
+  if(!current&&!generate())return;
+  if(!current)return;
+  if(!(window.jspdf&&window.jspdf.jsPDF)){msg(t("fail"),true);return;}
+  let dl=null;
+  try{dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null;}catch(e){}
+  if(!dl){
+    try{
+      const a=document.createElement("a");a.href=URL.createObjectURL(buildPDF());
+      a.download=(lang==="es"?"patrones-cubos-":"cube-patterns-")+current.size+"x"+current.size+".pdf";
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),4000);msg(t("saved"));
+    }catch(e){msg(t("nodl"));doPrint();}
+    return;
+  }
+  try{
+    msg(t("making"));
+    const blob=buildPDF();
+    await dl.save({filename:(lang==="es"?"patrones-cubos-":"cube-patterns-")+current.size+"x"+current.size+".pdf",data:blob});
+    msg(t("saved"));
+  }catch(e){
+    if(e&&e.code==="declined")msg(t("declined"));
+    else if(e&&e.code==="rate_limited")msg("…");
+    else msg(t("fail"),true);
+  }
+}
+
+$("gen").onclick=()=>generate();
+$("pdf").onclick=downloadPDF;
+$("print").onclick=()=>{if(!current&&!generate())return;msg(t("printTried"));doPrint();};
+renderLang();renderSizes();renderColors();
+</script>
+</body>
+</html>
